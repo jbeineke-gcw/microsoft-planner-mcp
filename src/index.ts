@@ -201,4 +201,16 @@ mcp.addTool({
   },
 });
 
+// Tool: List plans for current user
+mcp.addTool({
+  name: "list-plans",
+  description: "List all Planner plans accessible to the current user",
+  parameters: z.object({}),
+  execute: async () => {
+    const url = "https://graph.microsoft.com/v1.0/me/planner/plans";
+    const result = JSON.parse(azRest("GET", url));
+    return JSON.stringify(result.value, null, 2);
+  },
+});
+
 mcp.start({ transportType: "stdio" });

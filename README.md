@@ -28,7 +28,7 @@ npm run build
 Add the MCP server to Claude Code:
 
 ```bash
-claude mcp add planner-lite node /path/to/planner-mcp-lite/dist/index.js
+claude mcp add microsoft-planner-mcp node /path/to/microsoft-planner-mcp/dist/index.js
 ```
 
 Or add directly to your MCP settings file:
@@ -36,9 +36,9 @@ Or add directly to your MCP settings file:
 ```json
 {
   "mcpServers": {
-    "planner-lite": {
+    "microsoft-planner-mcp": {
       "command": "node",
-      "args": ["/path/to/planner-mcp-lite/dist/index.js"]
+      "args": ["/path/to/microsoft-planner-mcp/dist/index.js"]
     }
   }
 }
@@ -48,6 +48,8 @@ Or add directly to your MCP settings file:
 
 | Tool | Description |
 |------|-------------|
+| `list-plans` | List all Planner plans accessible to the current user |
+| `list-buckets` | List all buckets in a plan |
 | `list-tasks` | List all tasks in a Planner plan |
 | `get-task` | Get details of a specific task |
 | `get-task-details` | Get extended task details (description, checklist, references) |
@@ -55,20 +57,32 @@ Or add directly to your MCP settings file:
 | `update-task` | Update task properties (title, progress, assignments, categories) |
 | `update-task-details` | Update task description (supports GitHub links) |
 | `delete-task` | Delete a Planner task |
-| `list-buckets` | List all buckets in a plan |
+
+## Claude Code Agent (Optional)
+
+For enhanced automation, create a Claude Code agent at `~/.claude/agents/microsoft-planner.md` with:
+
+- **Auto-assignment**: Automatically assign tasks to a default user
+- **Auto-labeling**: Apply default categories/labels to tasks
+- **Status Intelligence**: Infer task bucket and progress from conversation context
+- **GitHub Integration**: Include repository links in task descriptions
+
+See the [agent template](https://github.com/vyente-ruffin/microsoft-planner-mcp/wiki/Agent-Configuration) for configuration details.
 
 ## Finding Your IDs
 
-To use the MCP tools, you'll need your Planner Plan ID and Bucket IDs. You can find these by:
+To use the MCP tools, you'll need your Planner Plan ID and Bucket IDs:
 
-1. Use `list-buckets` with your Plan ID to get bucket IDs
-2. Find your Plan ID from the Planner web URL: `https://tasks.office.com/...planId=YOUR_PLAN_ID`
+1. Use `list-plans` to discover all accessible plans and their IDs
+2. Use `list-buckets` with your Plan ID to get bucket IDs
+3. Or find your Plan ID from the Planner web URL: `https://tasks.office.com/...planId=YOUR_PLAN_ID`
 
 ## Example Usage
 
 Once configured, use natural language with Claude Code:
 
 ```
+"List all my planner plans"
 "List all tasks in the planner"
 "Create a task called 'Review PR #123' in the backlog bucket"
 "Mark task XYZ as complete"
