@@ -3,7 +3,7 @@ import { z } from "zod";
 import { execSync } from "child_process";
 
 const mcp = new FastMCP({
-  name: "planner-lite",
+  name: "microsoft-planner-mcp",
   version: "1.0.0",
 });
 

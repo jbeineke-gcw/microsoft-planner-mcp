@@ -1,4 +1,4 @@
-# planner-mcp-lite
+# microsoft-planner-mcp
 
 Lightweight MCP (Model Context Protocol) server for Microsoft Planner that uses `az rest` for authentication instead of complex OAuth flows.
 
@@ -17,8 +17,8 @@ A minimal MCP server that enables Claude Code to interact with Microsoft Planner
 ## Installation
 
 ```bash
-git clone https://github.com/vyente-ruffin/planner-mcp-lite.git
-cd planner-mcp-lite
+git clone https://github.com/vyente-ruffin/microsoft-planner-mcp.git
+cd microsoft-planner-mcp
 npm install
 npm run build
 ```
