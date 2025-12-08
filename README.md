@@ -17,7 +17,7 @@ A minimal MCP server that enables Claude Code to interact with Microsoft Planner
 ## Installation
 
 ```bash
-git clone https://github.com/405network/planner-mcp-lite.git
+git clone https://github.com/vyente-ruffin/planner-mcp-lite.git
 cd planner-mcp-lite
 npm install
 npm run build
@@ -57,22 +57,12 @@ Or add directly to your MCP settings file:
 | `delete-task` | Delete a Planner task |
 | `list-buckets` | List all buckets in a plan |
 
-## Reference IDs for 405network Tenant
+## Finding Your IDs
 
-### Plan IDs
-| Plan Name | Plan ID |
-|-----------|---------|
-| Your Plan Name | `your-plan-id-here` |
+To use the MCP tools, you'll need your Planner Plan ID and Bucket IDs. You can find these by:
 
-### Bucket IDs
-| Bucket Name | Bucket ID |
-|-------------|-----------|
-| Your Bucket Name | `your-bucket-id-here` |
-
-### User IDs
-| User | User ID |
-|------|---------|
-| Your User | `your-user-id-here` |
+1. Use `list-buckets` with your Plan ID to get bucket IDs
+2. Find your Plan ID from the Planner web URL: `https://tasks.office.com/...planId=YOUR_PLAN_ID`
 
 ## Example Usage
 
