@@ -43,10 +43,10 @@ function getGroupIdFromPlan(planId: string): string {
   return result.container.containerId;
 }
 
-// Helper to encode URL for reference keys (Graph API requires special encoding)
+// Helper to encode URL for reference keys (Graph API requires URL-encoded keys)
 function encodeUrlForReference(url: string): string {
-  // Graph API requires URL encoding with periods also encoded
-  return encodeURIComponent(url).replace(/\./g, "%2E");
+  // Standard URL encoding - do NOT encode periods as that breaks host parsing
+  return encodeURIComponent(url);
 }
 
 // Tool: List tasks for a plan
