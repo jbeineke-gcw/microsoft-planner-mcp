@@ -2,6 +2,9 @@ import { FastMCP } from "fastmcp";
 import { z } from "zod";
 import { execSync } from "child_process";
 import { randomUUID } from "crypto";
+import { writeFileSync, unlinkSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 
 const mcp = new FastMCP({
   name: "microsoft-planner-mcp",
@@ -47,6 +50,24 @@ function getGroupIdFromPlan(planId: string): string {
 function encodeUrlForReference(url: string): string {
   // Standard URL encoding - do NOT encode periods as that breaks host parsing
   return encodeURIComponent(url);
+}
+
+// Helper for PATCH requests with complex JSON bodies (uses temp file to avoid shell escaping issues)
+function azRestPatchWithEtag(url: string, etag: string, body: object): string {
+  const tmpFile = join(tmpdir(), `mcp-planner-${randomUUID()}.json`);
+  try {
+    writeFileSync(tmpFile, JSON.stringify(body));
+    const escapedEtag = etag.replace(/"/g, '\\"');
+    const args = [
+      `az rest --method PATCH --url "${url}"`,
+      `--headers "Content-Type=application/json" "If-Match=${escapedEtag}"`,
+      `--body @${tmpFile}`,
+    ];
+    const result = execSync(args.join(" "), { encoding: "utf-8" });
+    return result;
+  } finally {
+    try { unlinkSync(tmpFile); } catch {}
+  }
 }
 
 // Tool: List tasks for a plan
@@ -666,14 +687,8 @@ mcp.addTool({
     };
 
     const url = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}/details`;
-    const escapedEtag = etag.replace(/"/g, '\\"');
-    const args = [
-      `az rest --method PATCH --url "${url}"`,
-      `--headers "Content-Type=application/json" "If-Match=${escapedEtag}"`,
-      `--body '${JSON.stringify(body)}'`,
-    ];
     try {
-      const result = execSync(args.join(" "), { encoding: "utf-8" });
+      const result = azRestPatchWithEtag(url, etag, body);
       return result || "Reference added successfully";
     } catch (error: any) {
       throw new Error(`Add reference failed: ${error.message}`);
@@ -700,14 +715,8 @@ mcp.addTool({
     };
 
     const url = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}/details`;
-    const escapedEtag = etag.replace(/"/g, '\\"');
-    const args = [
-      `az rest --method PATCH --url "${url}"`,
-      `--headers "Content-Type=application/json" "If-Match=${escapedEtag}"`,
-      `--body '${JSON.stringify(body)}'`,
-    ];
     try {
-      const result = execSync(args.join(" "), { encoding: "utf-8" });
+      const result = azRestPatchWithEtag(url, etag, body);
       return result || "Reference deleted successfully";
     } catch (error: any) {
       throw new Error(`Delete reference failed: ${error.message}`);
