@@ -443,17 +443,29 @@ mcp.addTool({
     }
 
     const groupId = getGroupIdFromPlan(task.planId);
-    const url = `https://graph.microsoft.com/v1.0/groups/${groupId}/threads/${task.conversationThreadId}/posts`;
-    const result = JSON.parse(azRest("GET", url));
 
-    // Return simplified comment list
-    const comments = result.value.map((post: any) => ({
-      id: post.id,
-      content: post.body?.content,
-      contentType: post.body?.contentType,
-      createdDateTime: post.createdDateTime,
-      from: post.from?.emailAddress?.name || post.from?.emailAddress?.address,
-    }));
+    // Planner's conversationThreadId is a conversation ID - get threads from it, then posts
+    const threadsUrl = `https://graph.microsoft.com/v1.0/groups/${groupId}/conversations/${task.conversationThreadId}/threads`;
+    const threadsResult = JSON.parse(azRest("GET", threadsUrl));
+
+    // Collect posts from all threads
+    const comments: any[] = [];
+    for (const thread of threadsResult.value) {
+      const postsUrl = `https://graph.microsoft.com/v1.0/groups/${groupId}/conversations/${task.conversationThreadId}/threads/${thread.id}/posts`;
+      const postsResult = JSON.parse(azRest("GET", postsUrl));
+
+      for (const post of postsResult.value) {
+        comments.push({
+          id: post.id,
+          threadId: thread.id,
+          content: post.body?.content,
+          contentType: post.body?.contentType,
+          createdDateTime: post.createdDateTime,
+          from: post.from?.emailAddress?.name || post.from?.emailAddress?.address,
+        });
+      }
+    }
+
     return JSON.stringify(comments, null, 2);
   },
 });
@@ -473,8 +485,16 @@ mcp.addTool({
     const groupId = getGroupIdFromPlan(task.planId);
 
     if (task.conversationThreadId) {
-      // Reply to existing thread
-      const replyUrl = `https://graph.microsoft.com/v1.0/groups/${groupId}/threads/${task.conversationThreadId}/reply`;
+      // Reply to existing conversation - need to get the thread ID first
+      const threadsUrl = `https://graph.microsoft.com/v1.0/groups/${groupId}/conversations/${task.conversationThreadId}/threads`;
+      const threadsResult = JSON.parse(azRest("GET", threadsUrl));
+
+      if (!threadsResult.value || threadsResult.value.length === 0) {
+        throw new Error("Conversation exists but has no threads");
+      }
+
+      const threadId = threadsResult.value[0].id;
+      const replyUrl = `https://graph.microsoft.com/v1.0/groups/${groupId}/conversations/${task.conversationThreadId}/threads/${threadId}/reply`;
       const body = {
         post: {
           body: {
@@ -486,7 +506,7 @@ mcp.addTool({
       azRest("POST", replyUrl, body);
       return JSON.stringify({ success: true, message: "Comment added to existing thread" });
     } else {
-      // Create new conversation thread
+      // Create new conversation (POST to threads creates a conversation with initial thread)
       const threadsUrl = `https://graph.microsoft.com/v1.0/groups/${groupId}/threads`;
       const threadBody = {
         topic: task.title,
@@ -500,16 +520,17 @@ mcp.addTool({
         ],
       };
       const threadResult = JSON.parse(azRest("POST", threadsUrl, threadBody));
-      const threadId = threadResult.id;
+      // Graph API returns conversationId for the parent conversation - that's what Planner needs
+      const conversationId = threadResult.conversationId || threadResult.id;
 
-      // Update task with the new conversationThreadId
+      // Update task with the conversation ID
       const etag = getETag("task", taskId);
       const escapedEtag = etag.replace(/"/g, '\\"');
       const updateUrl = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}`;
       const args = [
         `az rest --method PATCH --url "${updateUrl}"`,
         `--headers "Content-Type=application/json" "If-Match=${escapedEtag}"`,
-        `--body '${JSON.stringify({ conversationThreadId: threadId })}'`,
+        `--body '${JSON.stringify({ conversationThreadId: conversationId })}'`,
       ];
       try {
         execSync(args.join(" "), { encoding: "utf-8" });
@@ -518,10 +539,10 @@ mcp.addTool({
         return JSON.stringify({
           success: true,
           warning: "Thread created but task link may have failed",
-          threadId
+          conversationId
         });
       }
-      return JSON.stringify({ success: true, message: "New conversation thread created", threadId });
+      return JSON.stringify({ success: true, message: "New conversation created", conversationId });
     }
   },
 });
