@@ -1,6 +1,7 @@
 import { FastMCP } from "fastmcp";
 import { z } from "zod";
 import { execSync } from "child_process";
+import { randomUUID } from "crypto";
 
 const mcp = new FastMCP({
   name: "microsoft-planner-mcp",
@@ -158,6 +159,154 @@ mcp.addTool({
       return result || "Task details updated successfully";
     } catch (error: any) {
       throw new Error(`Update details failed: ${error.message}`);
+    }
+  },
+});
+
+// Tool: Add checklist item
+mcp.addTool({
+  name: "add-checklist-item",
+  description: "Add a checklist item (subtask) to a Planner task",
+  parameters: z.object({
+    taskId: z.string().describe("The task ID"),
+    title: z.string().describe("Checklist item title"),
+    isChecked: z.boolean().optional().default(false).describe("Whether the item is checked"),
+  }),
+  execute: async ({ taskId, title, isChecked }) => {
+    const etag = getETag(taskId, true);
+    const itemId = randomUUID();
+    const body = {
+      checklist: {
+        [itemId]: {
+          "@odata.type": "#microsoft.graph.plannerChecklistItem",
+          title,
+          isChecked,
+        },
+      },
+    };
+
+    const url = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}/details`;
+    const escapedEtag = etag.replace(/"/g, '\\"');
+    const args = [
+      `az rest --method PATCH --url "${url}"`,
+      `--headers "Content-Type=application/json" "If-Match=${escapedEtag}"`,
+      `--body '${JSON.stringify(body)}'`,
+    ];
+    try {
+      const result = execSync(args.join(" "), { encoding: "utf-8" });
+      return result || JSON.stringify({ success: true, itemId, title });
+    } catch (error: any) {
+      throw new Error(`Add checklist item failed: ${error.message}`);
+    }
+  },
+});
+
+// Tool: Add multiple checklist items at once
+mcp.addTool({
+  name: "add-checklist-items",
+  description: "Add multiple checklist items (subtasks) to a Planner task in one operation",
+  parameters: z.object({
+    taskId: z.string().describe("The task ID"),
+    items: z.array(z.string()).describe("Array of checklist item titles"),
+  }),
+  execute: async ({ taskId, items }) => {
+    const etag = getETag(taskId, true);
+    const checklist: Record<string, any> = {};
+
+    for (const title of items) {
+      const itemId = randomUUID();
+      checklist[itemId] = {
+        "@odata.type": "#microsoft.graph.plannerChecklistItem",
+        title,
+        isChecked: false,
+      };
+    }
+
+    const body = { checklist };
+    const url = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}/details`;
+    const escapedEtag = etag.replace(/"/g, '\\"');
+    const args = [
+      `az rest --method PATCH --url "${url}"`,
+      `--headers "Content-Type=application/json" "If-Match=${escapedEtag}"`,
+      `--body '${JSON.stringify(body)}'`,
+    ];
+    try {
+      const result = execSync(args.join(" "), { encoding: "utf-8" });
+      return result || JSON.stringify({ success: true, itemCount: items.length });
+    } catch (error: any) {
+      throw new Error(`Add checklist items failed: ${error.message}`);
+    }
+  },
+});
+
+// Tool: Update checklist item (toggle or rename)
+mcp.addTool({
+  name: "update-checklist-item",
+  description: "Update a checklist item (toggle checked state or rename)",
+  parameters: z.object({
+    taskId: z.string().describe("The task ID"),
+    itemId: z.string().describe("The checklist item ID (from get-task-details)"),
+    title: z.string().optional().describe("New title for the item"),
+    isChecked: z.boolean().optional().describe("Set checked state"),
+  }),
+  execute: async ({ taskId, itemId, title, isChecked }) => {
+    const etag = getETag(taskId, true);
+    const itemUpdate: Record<string, any> = {
+      "@odata.type": "#microsoft.graph.plannerChecklistItem",
+    };
+    if (title !== undefined) itemUpdate.title = title;
+    if (isChecked !== undefined) itemUpdate.isChecked = isChecked;
+
+    const body = {
+      checklist: {
+        [itemId]: itemUpdate,
+      },
+    };
+
+    const url = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}/details`;
+    const escapedEtag = etag.replace(/"/g, '\\"');
+    const args = [
+      `az rest --method PATCH --url "${url}"`,
+      `--headers "Content-Type=application/json" "If-Match=${escapedEtag}"`,
+      `--body '${JSON.stringify(body)}'`,
+    ];
+    try {
+      const result = execSync(args.join(" "), { encoding: "utf-8" });
+      return result || "Checklist item updated successfully";
+    } catch (error: any) {
+      throw new Error(`Update checklist item failed: ${error.message}`);
+    }
+  },
+});
+
+// Tool: Delete checklist item
+mcp.addTool({
+  name: "delete-checklist-item",
+  description: "Delete a checklist item from a Planner task",
+  parameters: z.object({
+    taskId: z.string().describe("The task ID"),
+    itemId: z.string().describe("The checklist item ID to delete"),
+  }),
+  execute: async ({ taskId, itemId }) => {
+    const etag = getETag(taskId, true);
+    const body = {
+      checklist: {
+        [itemId]: null,
+      },
+    };
+
+    const url = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}/details`;
+    const escapedEtag = etag.replace(/"/g, '\\"');
+    const args = [
+      `az rest --method PATCH --url "${url}"`,
+      `--headers "Content-Type=application/json" "If-Match=${escapedEtag}"`,
+      `--body '${JSON.stringify(body)}'`,
+    ];
+    try {
+      const result = execSync(args.join(" "), { encoding: "utf-8" });
+      return result || "Checklist item deleted successfully";
+    } catch (error: any) {
+      throw new Error(`Delete checklist item failed: ${error.message}`);
     }
   },
 });

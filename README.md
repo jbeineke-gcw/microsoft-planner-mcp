@@ -17,7 +17,7 @@ A minimal MCP server that enables Claude Code to interact with Microsoft Planner
 ## Installation
 
 ```bash
-git clone https://github.com/vyente-ruffin/microsoft-planner-mcp.git
+git clone https://github.com/jbeineke-gcw/microsoft-planner-mcp.git
 cd microsoft-planner-mcp
 npm install
 npm run build
@@ -57,6 +57,10 @@ Or add directly to your MCP settings file:
 | `update-task` | Update task properties (title, progress, assignments, categories) |
 | `update-task-details` | Update task description (supports GitHub links) |
 | `delete-task` | Delete a Planner task |
+| `add-checklist-item` | Add a single checklist item (subtask) to a task |
+| `add-checklist-items` | Add multiple checklist items in one operation |
+| `update-checklist-item` | Update a checklist item (toggle checked or rename) |
+| `delete-checklist-item` | Remove a checklist item from a task |
 
 ## Claude Code Agent (Optional)
 
@@ -87,6 +91,8 @@ Once configured, use natural language with Claude Code:
 "Create a task called 'Review PR #123' in the backlog bucket"
 "Mark task XYZ as complete"
 "Add a description with the GitHub PR link to the task"
+"Add a checklist with: design, implement, test, document"
+"Check off the 'design' item on that task"
 ```
 
 ## How It Works
