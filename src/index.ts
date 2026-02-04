@@ -788,7 +788,13 @@ mcp.addTool({
         `--body @${tmpFile}`,
       ];
       const uploadResult = JSON.parse(execSync(args.join(" "), { encoding: "utf-8", maxBuffer: 10 * 1024 * 1024 }));
-      const fileWebUrl = uploadResult.webUrl;
+      const fileId = uploadResult.id;
+
+      // Create a sharing link for the file (cleaner URL than webUrl)
+      const shareLinkUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}/createLink`;
+      const shareLinkBody = { type: "view", scope: "organization" };
+      const shareLinkResult = JSON.parse(azRest("POST", shareLinkUrl, shareLinkBody));
+      const fileWebUrl = shareLinkResult.link.webUrl;
 
       // Add reference to task
       const etag = getETag("taskDetails", taskId);
