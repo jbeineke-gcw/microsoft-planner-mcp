@@ -46,10 +46,18 @@ function getGroupIdFromPlan(planId: string): string {
   return result.container.containerId;
 }
 
-// Helper to encode URL for reference keys (Graph API requires URL-encoded keys)
+// Helper to encode URL for reference keys (Graph API requires specific encoding)
+// Per Microsoft docs: encode colons and dots, but NOT forward slashes
+// Example: https://github.com → https%3A//github%2Ecom
 function encodeUrlForReference(url: string): string {
-  // Standard URL encoding - do NOT encode periods as that breaks host parsing
-  return encodeURIComponent(url);
+  return url
+    .replace(/:/g, "%3A")     // Encode colons
+    .replace(/\./g, "%2E")    // Encode dots
+    .replace(/ /g, "%20")     // Encode spaces
+    .replace(/#/g, "%23")     // Encode hash
+    .replace(/\?/g, "%3F")    // Encode question mark
+    .replace(/&/g, "%26")     // Encode ampersand
+    .replace(/=/g, "%3D");    // Encode equals
 }
 
 // Helper for PATCH requests with complex JSON bodies (uses temp file to avoid shell escaping issues)
