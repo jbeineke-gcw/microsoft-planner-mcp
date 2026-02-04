@@ -2,9 +2,9 @@ import { FastMCP } from "fastmcp";
 import { z } from "zod";
 import { execSync } from "child_process";
 import { randomUUID } from "crypto";
-import { writeFileSync, unlinkSync } from "fs";
+import { writeFileSync, unlinkSync, readFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { join, basename } from "path";
 
 const mcp = new FastMCP({
   name: "microsoft-planner-mcp",
@@ -737,6 +737,83 @@ mcp.addTool({
       return result || "Reference deleted successfully";
     } catch (error: any) {
       throw new Error(`Delete reference failed: ${error.message}`);
+    }
+  },
+});
+
+// Tool: Upload file attachment to SharePoint and attach to task
+mcp.addTool({
+  name: "upload-attachment",
+  description: "Upload a local file to the plan's SharePoint and attach it to a task (max 4MB)",
+  parameters: z.object({
+    taskId: z.string().describe("The task ID"),
+    filePath: z.string().describe("Local path to the file to upload"),
+    alias: z.string().optional().describe("Display name for the attachment (defaults to filename)"),
+  }),
+  execute: async ({ taskId, filePath, alias }) => {
+    // Read file
+    const fileBuffer = readFileSync(filePath);
+    const fileName = basename(filePath);
+    const fileSize = fileBuffer.length;
+
+    if (fileSize > 4 * 1024 * 1024) {
+      throw new Error("File too large. Maximum size is 4MB. For larger files, upload manually to SharePoint.");
+    }
+
+    // Get task to find planId
+    const taskUrl = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}`;
+    const task = JSON.parse(azRest("GET", taskUrl));
+
+    // Get groupId from plan
+    const groupId = getGroupIdFromPlan(task.planId);
+
+    // Get the group's drive (SharePoint document library)
+    const driveUrl = `https://graph.microsoft.com/v1.0/groups/${groupId}/drive`;
+    const drive = JSON.parse(azRest("GET", driveUrl));
+    const driveId = drive.id;
+
+    // Upload file to SharePoint (root of document library, in a "Planner Attachments" folder)
+    const folderPath = "Planner Attachments";
+    const uploadUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/root:/${folderPath}/${fileName}:/content`;
+
+    // Write file to temp location for az rest to read
+    const tmpFile = join(tmpdir(), `mcp-upload-${randomUUID()}-${fileName}`);
+    try {
+      writeFileSync(tmpFile, fileBuffer);
+
+      // Upload using az rest with binary file
+      const args = [
+        `az rest --method PUT --url "${uploadUrl}"`,
+        `--headers "Content-Type=application/octet-stream"`,
+        `--body @${tmpFile}`,
+      ];
+      const uploadResult = JSON.parse(execSync(args.join(" "), { encoding: "utf-8", maxBuffer: 10 * 1024 * 1024 }));
+      const fileWebUrl = uploadResult.webUrl;
+
+      // Add reference to task
+      const etag = getETag("taskDetails", taskId);
+      const encodedUrl = encodeUrlForReference(fileWebUrl);
+      const referenceData: Record<string, any> = {
+        "@odata.type": "#microsoft.graph.plannerExternalReference",
+        alias: alias || fileName,
+      };
+      const refBody = {
+        references: {
+          [encodedUrl]: referenceData,
+        },
+      };
+      const detailsUrl = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}/details`;
+      azRestPatchWithEtag(detailsUrl, etag, refBody);
+
+      return JSON.stringify({
+        success: true,
+        fileName,
+        fileSize,
+        sharePointUrl: fileWebUrl,
+        message: "File uploaded to SharePoint and attached to task",
+      });
+    } finally {
+      try { unlinkSync(tmpFile); } catch {}
     }
   },
 });

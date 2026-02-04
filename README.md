@@ -88,11 +88,12 @@ Or add directly to your MCP settings file:
 | `get-task-comments` | Get all comments on a task |
 | `add-task-comment` | Add a comment to a task (creates thread if needed) |
 
-### References (Attachments)
+### References & Attachments
 | Tool | Description |
 |------|-------------|
 | `add-reference` | Add a URL reference/attachment to a task |
 | `delete-reference` | Remove a reference from a task |
+| `upload-attachment` | Upload a local file to SharePoint and attach to a task (max 4MB) |
 
 ## Claude Code Agent (Optional)
 
@@ -159,6 +160,7 @@ Once configured, use natural language with Claude Code:
 "Add a comment to this task: 'Waiting on API team'"
 "Show me the comments on this task"
 "Attach this GitHub PR link to the task"
+"Upload /path/to/data-export.csv to this task"
 "Create a new bucket called 'Blocked'"
 "Show me all my assigned tasks across all plans"
 ```
