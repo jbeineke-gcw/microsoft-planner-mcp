@@ -147,9 +147,10 @@ mcp.addTool({
     percentComplete: z.number().min(0).max(100).optional().describe("Progress 0-100"),
     assignUserId: z.string().optional().describe("User ID to assign"),
     category: z.string().optional().describe("Category to apply (category1-category25)"),
+    removeCategory: z.string().optional().describe("Category to remove (category1-category25)"),
     dueDateTime: z.string().optional().describe("Due date (ISO 8601 format, e.g., '2024-12-31' or '2024-12-31T17:00:00Z'). Use 'clear' to remove due date."),
   }),
-  execute: async ({ taskId, title, percentComplete, assignUserId, category, dueDateTime }) => {
+  execute: async ({ taskId, title, percentComplete, assignUserId, category, removeCategory, dueDateTime }) => {
     const etag = getETag("task", taskId);
     const body: Record<string, any> = {};
     if (title !== undefined) body.title = title;
@@ -162,8 +163,10 @@ mcp.addTool({
         },
       };
     }
-    if (category) {
-      body.appliedCategories = { [category]: true };
+    if (category || removeCategory) {
+      body.appliedCategories = {};
+      if (category) body.appliedCategories[category] = true;
+      if (removeCategory) body.appliedCategories[removeCategory] = null;
     }
     if (dueDateTime) {
       if (dueDateTime.toLowerCase() === "clear") {
