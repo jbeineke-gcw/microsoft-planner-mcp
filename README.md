@@ -69,7 +69,7 @@ Or add directly to your MCP settings file:
 | `get-task` | Get details of a specific task |
 | `get-task-details` | Get extended task details (description, checklist, references) |
 | `create-task` | Create a new task in a plan |
-| `update-task` | Update task properties (title, progress, assignments, categories) |
+| `update-task` | Update task properties (title, progress, assignments, categories, due date) |
 | `update-task-details` | Update task description (supports GitHub links) |
 | `move-task` | Move a task to a different bucket |
 | `delete-task` | Delete a Planner task |
@@ -148,6 +148,7 @@ Once configured, use natural language with Claude Code:
 "List all tasks in the planner"
 "Create a task called 'Review PR #123' in the backlog bucket"
 "Mark task XYZ as complete"
+"Set this task's due date to next Friday"
 "Add a description with the GitHub PR link to the task"
 "Add a checklist with: design, implement, test, document"
 "Check off the 'design' item on that task"

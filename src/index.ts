@@ -140,15 +140,16 @@ mcp.addTool({
 // Tool: Update task (title, percentComplete, assignments, categories)
 mcp.addTool({
   name: "update-task",
-  description: "Update task properties (title, progress, assignments, categories). Auto-fetches ETag.",
+  description: "Update task properties (title, progress, assignments, categories, due date). Auto-fetches ETag.",
   parameters: z.object({
     taskId: z.string().describe("The task ID"),
     title: z.string().optional().describe("New title"),
     percentComplete: z.number().min(0).max(100).optional().describe("Progress 0-100"),
     assignUserId: z.string().optional().describe("User ID to assign"),
     category: z.string().optional().describe("Category to apply (category1-category25)"),
+    dueDateTime: z.string().optional().describe("Due date (ISO 8601 format, e.g., '2024-12-31' or '2024-12-31T17:00:00Z')"),
   }),
-  execute: async ({ taskId, title, percentComplete, assignUserId, category }) => {
+  execute: async ({ taskId, title, percentComplete, assignUserId, category, dueDateTime }) => {
     const etag = getETag("task", taskId);
     const body: Record<string, any> = {};
     if (title !== undefined) body.title = title;
@@ -163,6 +164,10 @@ mcp.addTool({
     }
     if (category) {
       body.appliedCategories = { [category]: true };
+    }
+    if (dueDateTime) {
+      // If just a date is provided (YYYY-MM-DD), append time for end of day UTC
+      body.dueDateTime = dueDateTime.includes("T") ? dueDateTime : `${dueDateTime}T23:59:59Z`;
     }
 
     const url = `https://graph.microsoft.com/v1.0/planner/tasks/${taskId}`;
